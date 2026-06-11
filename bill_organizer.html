@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monthly Bill Organizer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; padding: 20px; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 14px; color: #666; margin-bottom: 16px; }
+  .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .manage-btn { background: #1a1a1a; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+  .month-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .month-nav button { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 6px 14px; font-size: 14px; cursor: pointer; }
+  .month-label { font-size: 16px; font-weight: 600; min-width: 150px; text-align: center; }
+  .reset-btn { margin-left: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 6px 12px; font-size: 13px; color: #888; cursor: pointer; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat { background: #fff; border-radius: 10px; padding: 14px; border: 1px solid #e8e8e8; }
+  .stat-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+  .stat-value { font-size: 20px; font-weight: 600; }
+  .stat-value.green { color: #2d7d46; }
+  .stat-value.orange { color: #c05c00; font-size: 16px; }
+  .progress-wrap { margin-bottom: 20px; }
+  .progress-labels { display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-bottom: 5px; }
+  .progress-track { height: 7px; background: #e8e8e8; border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #2d7d46; border-radius: 4px; transition: width 0.3s; }
+  .alert-overdue { background: #fff0f0; border: 1px solid #f5c2c2; color: #c0392b; margin-bottom: 10px; border-radius: 10px; padding: 12px 14px; }
+  .alert-soon { background: #fffdf0; border: 1px solid #f0d080; color: #8a6000; margin-bottom: 16px; border-radius: 10px; padding: 12px 14px; }
+  .alert-item { font-size: 13px; font-weight: 400; margin-top: 3px; padding-left: 10px; }
+  .day-group { margin-bottom: 20px; }
+  .day-label { font-size: 12px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .day-dot { width: 8px; height: 8px; background: #4a7ec7; border-radius: 50%; flex-shrink:0; }
+  .day-dot.overdue { background: #c0392b; }
+  .day-dot.soon { background: #e0a000; }
+  .bill-row { background: #fff; border: 1px solid #e8e8e8; border-radius: 10px; padding: 12px 14px; margin-bottom: 6px; display: flex; align-items: center; gap: 12px; }
+  .bill-row.paid { opacity: 0.45; }
+  .bill-row.overdue { background: #fff0f0; border-color: #f5c2c2; }
+  .bill-row.today { background: #faf5ff; border-color: #d8b4fe; }
+  .bill-row.soon { background: #fffdf0; border-color: #f0d080; }
+  .check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #ccc; background: transparent; cursor: pointer; flex-shrink: 0; font-size: 13px; display: flex; align-items: center; justify-content: center; color: #2d7d46; transition: all 0.15s; }
+  .check.done { background: #d4edda; border-color: #2d7d46; }
+  .bill-info { flex: 1; min-width: 0; }
+  .bill-name { font-size: 14px; font-weight: 600; }
+  .bill-row.overdue .bill-name { color: #c0392b; }
+  .bill-row.overdue .bill-amt { color: #c0392b; }
+  .bill-row.today .bill-name { color: #6b21a8; }
+  .bill-row.today .bill-amt { color: #6b21a8; }
+  .paid .bill-name { text-decoration: line-through; }
+  .bill-sub { font-size: 12px; color: #888; margin-top: 2px; }
+  .status-tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-top: 3px; }
+  .tag-overdue { background: #fde8e8; color: #c0392b; }
+  .tag-soon { background: #fff0c0; color: #8a6000; }
+  .tag-today { background: #f0eaff; color: #6b21a8; }
+  .owed-tag { display: inline-block; background: #fff4e0; color: #9a5c00; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-top: 3px; }
+  .bill-amt { font-size: 15px; font-weight: 600; text-align: right; white-space: nowrap; flex-shrink: 0; }
+  .bill-amt.approx { color: #888; }
+  .set-btn { font-size: 12px; padding: 4px 10px; background: #f5f5f0; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; color: #555; white-space: nowrap; }
+  .sync-bar { font-size: 12px; color: #888; text-align: center; margin-bottom: 12px; min-height: 18px; }
+  .pin-overlay { display:flex; position:fixed; top:0; left:0; width:100%; height:100%; background:#f5f5f0; z-index:999; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; }
+  .pin-title { font-size:24px; font-weight:700; margin-bottom:8px; }
+  .pin-sub { font-size:14px; color:#888; margin-bottom:32px; }
+  .pin-dots { display:flex; gap:16px; margin-bottom:32px; }
+  .pin-dot { width:18px; height:18px; border-radius:50%; border:2px solid #ccc; background:transparent; transition:all 0.15s; }
+  .pin-dot.filled { background:#1a1a1a; border-color:#1a1a1a; }
+  .pin-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; width:100%; max-width:280px; }
+  .pin-btn { background:#fff; border:1px solid #e8e8e8; border-radius:14px; padding:18px; font-size:22px; font-weight:600; cursor:pointer; text-align:center; }
+  .pin-btn:active { background:#f0f0f0; }
+  .pin-btn.del { font-size:18px; color:#888; }
+  .pin-error { color:#c0392b; font-size:13px; margin-top:12px; min-height:18px; }
+  .sync-bar.syncing { color: #4a7ec7; }
+  .sync-bar.error { color: #c0392b; }
+
+  /* Modal overlay */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; overflow-y: auto; padding: 20px; }
+  .modal-overlay.show { display: block; }
+  .modal { background: #fff; border-radius: 14px; padding: 20px; max-width: 500px; margin: 0 auto; }
+  .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: #888; padding: 0; line-height: 1; }
+  .field-label { font-size: 13px; color: #555; margin-bottom: 5px; font-weight: 500; }
+  .field-input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 14px; background: #fff; }
+  .field-input:focus { outline: none; border-color: #4a7ec7; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .save-btn { width: 100%; background: #1a1a1a; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 4px; }
+  .save-btn:hover { background: #333; }
+  .bill-list-manage { margin-top: 16px; }
+  .manage-row { display: flex; align-items: center; gap: 10px; background: #f9f9f6; border: 1px solid #e8e8e8; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .manage-row-info { flex: 1; min-width: 0; }
+  .manage-row-name { font-size: 14px; font-weight: 600; }
+  .manage-row-sub { font-size: 12px; color: #888; margin-top: 2px; }
+  .edit-btn { background: #f0f0f0; border: 1px solid #ddd; border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
+  .del-btn { background: #fff0f0; border: 1px solid #f5c2c2; color: #c0392b; border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
+  .add-bill-btn { width: 100%; background: #f0f7ff; border: 1px dashed #4a7ec7; color: #4a7ec7; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 4px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab { flex: 1; padding: 8px; text-align: center; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid #e8e8e8; background: #fff; color: #888; }
+  .tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  select.field-input { appearance: none; }
+</style>
+</head>
+<body>
+
+<div class="pin-overlay" id="pinOverlay">
+  <div style="font-size:48px;margin-bottom:16px">&#128176;</div>
+  <div class="pin-title">Bill Organizer</div>
+  <div class="pin-sub">Enter your PIN to continue</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="dot0"></div>
+    <div class="pin-dot" id="dot1"></div>
+    <div class="pin-dot" id="dot2"></div>
+    <div class="pin-dot" id="dot3"></div>
+  </div>
+  <div class="pin-pad">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn" onclick="pinPress('')"></button>
+    <button class="pin-btn" onclick="pinPress('0')">0</button>
+    <button class="pin-btn del" onclick="pinDel()">&#9003;</button>
+  </div>
+  <div class="pin-error" id="pinError"></div>
+</div>
+
+<div class="top-bar">
+  <div>
+    <h1>&#128176; Bill Organizer</h1>
+    <p class="subtitle">Check off bills as you pay them</p>
+  </div>
+  <button class="manage-btn" onclick="openManage()">&#9881; Manage</button>
+</div>
+
+<div class="sync-bar" id="syncBar">Loading...</div>
+
+<div class="month-nav">
+  <button onclick="changeMonth(-1)">&#8592;</button>
+  <span class="month-label" id="monthLabel"></span>
+  <button onclick="changeMonth(1)">&#8594;</button>
+  <button class="reset-btn" onclick="resetMonth()">&#8635; Reset</button>
+</div>
+
+<div class="summary-grid">
+  <div class="stat"><div class="stat-label">Total Due</div><div class="stat-value" id="sTotalDue">—</div></div>
+  <div class="stat"><div class="stat-label">Paid</div><div class="stat-value green" id="sPaid">—</div></div>
+  <div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" id="sLeft">—</div></div>
+  <div class="stat"><div class="stat-label">Loan Balances</div><div class="stat-value orange" id="sOwed">—</div></div>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-labels"><span id="pText">0 of 8 paid</span><span id="pPct">0%</span></div>
+  <div class="progress-track"><div class="progress-fill" id="pFill" style="width:0%"></div></div>
+</div>
+
+<div id="alertArea"></div>
+<div id="billList"></div>
+
+<!-- Manage Modal -->
+<div class="modal-overlay" id="manageModal">
+  <div class="modal">
+    <div class="modal-title">
+      <span>Manage Bills</span>
+      <button class="modal-close" onclick="closeManage()">&#10005;</button>
+    </div>
+    <div class="tabs">
+      <div class="tab active" id="tabList" onclick="switchTab('list')">My Bills</div>
+      <div class="tab" id="tabAdd" onclick="switchTab('add')">+ Add Bill</div>
+    </div>
+
+    <!-- Bill list tab -->
+    <div id="panelList">
+      <div class="bill-list-manage" id="manageBillList"></div>
+    </div>
+
+    <!-- Add/Edit tab -->
+    <div id="panelAdd" style="display:none">
+      <input type="hidden" id="editId" value="">
+      <div class="field-label">Bill name</div>
+      <input class="field-input" id="fName" placeholder="e.g. Netflix" />
+      <div class="field-row">
+        <div>
+          <div class="field-label">Due day of month</div>
+          <input class="field-input" id="fDay" type="number" min="1" max="31" placeholder="1-31" />
+        </div>
+        <div>
+          <div class="field-label">Amount ($)</div>
+          <input class="field-input" id="fAmount" type="number" step="0.01" placeholder="0.00" />
+        </div>
+      </div>
+      <div class="field-label">Amount type</div>
+      <select class="field-input" id="fApprox">
+        <option value="false">Fixed amount</option>
+        <option value="true">Approximate (~)</option>
+        <option value="null">Variable (set each month)</option>
+      </select>
+      <div class="field-label">Balance owed (optional — for loans/credit cards)</div>
+      <input class="field-input" id="fOwed" type="number" step="0.01" placeholder="Leave blank if none" />
+      <div class="field-label">Payment website URL (optional)</div>
+      <input class="field-input" id="fUrl" type="url" placeholder="https://..." />
+      <div class="field-row">
+        <div>
+          <div class="field-label">Login username (optional)</div>
+          <input class="field-input" id="fUsername" placeholder="username or email" />
+        </div>
+        <div>
+          <div class="field-label">Password (optional)</div>
+          <div style="position:relative">
+            <input class="field-input" id="fPassword" type="password" placeholder="••••••••" style="padding-right:44px;margin-bottom:0" />
+            <button type="button" onclick="var p=document.getElementById('fPassword');p.type=p.type==='password'?'text':'password'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#888">&#128065;</button>
+          </div>
+        </div>
+      </div>
+      <div class="field-label">Note (optional)</div>
+      <input class="field-input" id="fNote" placeholder="e.g. Electric/utilities" />
+      <button class="save-btn" onclick="saveBill()">Save Bill</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var CORRECT_PIN='1023';
+var pinEntry='';
+var pinUnlocked=sessionStorage.getItem('pin_unlocked')==='1';
+
+function initPin(){
+  if(pinUnlocked){
+    document.getElementById('pinOverlay').style.display='none';
+  }
+}
+
+function pinPress(d){
+  if(pinEntry.length>=4)return;
+  pinEntry+=d;
+  updateDots();
+  if(pinEntry.length===4){
+    if(pinEntry===CORRECT_PIN){
+      sessionStorage.setItem('pin_unlocked','1');
+      document.getElementById('pinOverlay').style.display='none';
+    } else {
+      document.getElementById('pinError').textContent='Incorrect PIN. Try again.';
+      setTimeout(function(){pinEntry='';updateDots();document.getElementById('pinError').textContent='';},800);
+    }
+  }
+}
+
+function pinDel(){
+  pinEntry=pinEntry.slice(0,-1);
+  updateDots();
+}
+
+function updateDots(){
+  for(var i=0;i<4;i++){
+    document.getElementById('dot'+i).className='pin-dot'+(i<pinEntry.length?' filled':'');
+  }
+}
+
+var SUPABASE_URL='https://qywqtjcrphrzjuvgkzwl.supabase.co';
+var SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5d3F0amNycGhyemp1dmdrendsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzIxNjEsImV4cCI6MjA5NjYwODE2MX0.uxA3T9em7MmI2LtQnrJ_d0c2b05GHJGCj4eRtJVfEFo';
+
+var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+var DEFAULT_BILLS=[
+  {id:'child', url:null,      day:1,  name:'Child Support',             icon:'&#128155;', amount:273.65,  approx:false, note:'', owed:null},
+  {id:'tractor', url:null,    day:1,  name:'Tractor Supply Loan',       icon:'&#128668;', amount:null,    approx:false, note:'', owed:4000},
+  {id:'home', url:null,       day:1,  name:'Home Loan / Mortgage',      icon:'&#127968;', amount:1827.43, approx:false, note:'', owed:null},
+  {id:'att', url:null,        day:7,  name:'ATT Internet',              icon:'&#127760;', amount:67.84,   approx:false, note:'', owed:null},
+  {id:'firstnet', url:null,   day:13, name:'ATT FirstNet',              icon:'&#128241;', amount:null,    approx:false, note:'', owed:null},
+  {id:'progressive', url:null,day:14, name:'Progressive Car Insurance', icon:'&#128663;', amount:null,    approx:false, note:'', owed:null},
+  {id:'wellsfargo', url:null, day:18, name:'Wells Fargo Credit Card',   icon:'&#128179;', amount:null,    approx:false, note:'', owed:563.83},
+  {id:'pso', url:null,        day:29, name:'PSO Utilities',             icon:'&#9889;',   amount:140.55,  approx:true,  note:'', owed:null},
+  {id:'horse',       url:null, day:1,  name:'Horse Boarding',             icon:'&#128014;', amount:175.00,  approx:false, note:'', owed:null},
+  {id:'progressive2',url:null, day:6,  name:'Progressive Insurance',      icon:'&#128663;', amount:114.07,  approx:false, note:'', owed:null},
+  {id:'verizon',     url:null, day:22, name:'Verizon',                    icon:'&#128241;', amount:141.25,  approx:false, note:'', owed:null},
+  {id:'kia',         url:null, day:27, name:'KIA Loan Payments',          icon:'&#128663;', amount:750.00,  approx:false, note:'', owed:36414.77}
+];
+
+var ICONS=['&#128176;','&#127968;','&#128663;','&#128241;','&#127760;','&#9889;','&#128179;','&#128155;','&#128668;','&#128282;','&#128466;','&#127895;','&#128444;','&#128218;'];
+
+var curMonth=new Date().getMonth(), curYear=new Date().getFullYear();
+var paid={}, customAmts={}, owedAmt={}, bills=[];
+
+function syncKey(){return 'state_'+curYear+'_'+curMonth;}
+function amtKey(){return 'amts_'+curYear+'_'+curMonth;}
+function owedKey(){return 'owed';}
+function billsKey(){return 'bills_config';}
+
+function setSyncBar(msg,cls){
+  var b=document.getElementById('syncBar');
+  b.textContent=msg; b.className='sync-bar'+(cls?' '+cls:'');
+}
+
+async function dbGet(key){
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/bills_state?key=eq.'+encodeURIComponent(key)+'&select=value',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    var d=await r.json();
+    return d&&d.length>0?JSON.parse(d[0].value):null;
+  }catch(e){return null;}
+}
+
+async function dbSet(key,value){
+  try{
+    var existing=await fetch(SUPABASE_URL+'/rest/v1/bills_state?key=eq.'+encodeURIComponent(key),{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    var ex=await existing.json();
+    var method=ex&&ex.length>0?'PATCH':'POST';
+    var url=ex&&ex.length>0
+      ?SUPABASE_URL+'/rest/v1/bills_state?key=eq.'+encodeURIComponent(key)
+      :SUPABASE_URL+'/rest/v1/bills_state';
+    await fetch(url,{
+      method:method,
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({key:key,value:JSON.stringify(value)})
+    });
+  }catch(e){console.error(e);}
+}
+
+async function loadState(){
+  setSyncBar('Syncing...','syncing');
+  try{
+    var s=await dbGet(syncKey());
+    var a=await dbGet(amtKey());
+    var o=await dbGet(owedKey());
+    var bc=await dbGet(billsKey());
+    paid=s||{};
+    customAmts=a||{};
+    var defaultOwed={};
+    DEFAULT_BILLS.forEach(function(b){if(b.owed!=null)defaultOwed[b.id]=b.owed;});
+    owedAmt=o||defaultOwed;
+    bills=bc||DEFAULT_BILLS;
+    setSyncBar('Synced ✓');
+  }catch(e){
+    setSyncBar('Offline','error');
+    paid={}; customAmts={}; bills=DEFAULT_BILLS;
+    var defaultOwed={};
+    DEFAULT_BILLS.forEach(function(b){if(b.owed!=null)defaultOwed[b.id]=b.owed;});
+    owedAmt=defaultOwed;
+  }
+}
+
+async function saveState(){
+  setSyncBar('Saving...','syncing');
+  try{
+    await dbSet(syncKey(),paid);
+    await dbSet(amtKey(),customAmts);
+    await dbSet(owedKey(),owedAmt);
+    setSyncBar('Saved ✓');
+  }catch(e){setSyncBar('Save failed','error');}
+}
+
+async function saveBills(){
+  await dbSet(billsKey(),bills);
+}
+
+function getAmt(b){return customAmts[b.id]!=null?customAmts[b.id]:b.amount;}
+function fmt(n){if(n==null)return'—';return'$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+function getStatus(day){
+  var today=new Date();
+  var isCurrentMonth=(curMonth===today.getMonth()&&curYear===today.getFullYear());
+  if(!isCurrentMonth)return'normal';
+  var todayDay=today.getDate();
+  if(day<todayDay)return'overdue';
+  if(day===todayDay)return'today';
+  if(day-todayDay<=3)return'soon';
+  return'normal';
+}
+
+function pickIcon(name){
+  var n=name.toLowerCase();
+  if(n.includes('mortgage')||n.includes('home')||n.includes('rent'))return'&#127968;';
+  if(n.includes('car')||n.includes('auto')||n.includes('insurance'))return'&#128663;';
+  if(n.includes('phone')||n.includes('mobile')||n.includes('firstnet')||n.includes('att'))return'&#128241;';
+  if(n.includes('internet')||n.includes('wifi'))return'&#127760;';
+  if(n.includes('electric')||n.includes('utility')||n.includes('pso'))return'&#9889;';
+  if(n.includes('credit')||n.includes('card')||n.includes('wells'))return'&#128179;';
+  if(n.includes('loan')||n.includes('tractor'))return'&#128668;';
+  if(n.includes('child')||n.includes('support'))return'&#128155;';
+  return'&#128176;';
+}
+
+async function togglePaid(id){
+  paid[id]=!paid[id];
+  if(paid[id]){
+    var b=bills.find(function(x){return x.id===id;});
+    var amt=getAmt(b);
+    if(b.owed!=null&&amt!=null){owedAmt[id]=Math.max(0,(owedAmt[id]||0)-amt);}
+  }
+  render(); await saveState();
+}
+
+async function setAmt(id){
+  var b=bills.find(function(x){return x.id===id;});
+  var cur=getAmt(b);
+  var v=prompt('Enter monthly payment for '+b.name+':',cur!=null?cur:'');
+  if(v!==null&&v.trim()!==''){
+    var n=parseFloat(v.replace(/[$,]/g,''));
+    if(!isNaN(n)){customAmts[id]=n;render();await saveState();}
+  }
+}
+
+async function resetMonth(){
+  if(!confirm('Reset all payments for this month?'))return;
+  paid={};render();await saveState();
+}
+
+async function changeMonth(d){
+  curMonth+=d;
+  if(curMonth>11){curMonth=0;curYear++;}
+  if(curMonth<0){curMonth=11;curYear--;}
+  await loadState();render();
+}
+
+/* Manage Modal */
+function openManage(){
+  document.getElementById('manageModal').classList.add('show');
+  renderManageList();
+}
+function closeManage(){
+  document.getElementById('manageModal').classList.remove('show');
+}
+function switchTab(t){
+  document.getElementById('tabList').className='tab'+(t==='list'?' active':'');
+  document.getElementById('tabAdd').className='tab'+(t==='add'?' active':'');
+  document.getElementById('panelList').style.display=t==='list'?'':'none';
+  document.getElementById('panelAdd').style.display=t==='add'?'':'none';
+  if(t==='add'){
+    document.getElementById('editId').value='';
+    document.getElementById('fName').value='';
+    document.getElementById('fDay').value='';
+    document.getElementById('fAmount').value='';
+    document.getElementById('fApprox').value='false';
+    document.getElementById('fOwed').value='';
+    document.getElementById('fNote').value='';
+    document.getElementById('tabAdd').textContent='+ Add Bill';
+  }
+}
+
+function renderManageList(){
+  var sorted=bills.slice().sort(function(a,b){return a.day-b.day;});
+  var html='';
+  sorted.forEach(function(b){
+    html+='<div class="manage-row">'+
+      '<div class="manage-row-info">'+
+        '<div class="manage-row-name">'+b.name+'</div>'+
+        '<div class="manage-row-sub">Due '+b.day+ordSuffix(b.day)+' &nbsp;&#8226;&nbsp; '+(b.amount!=null?fmt(b.amount):'Variable')+(b.approx?' (approx)':'')+(b.owed!=null?' &nbsp;&#8226;&nbsp; Owes '+fmt(b.owed):'')+'</div>'+
+      '</div>'+
+      '<button class="edit-btn" onclick="editBill(\''+b.id+'\')">Edit</button>'+
+      '<button class="del-btn" onclick="deleteBill(\''+b.id+'\')">&#128465;</button>'+
+    '</div>';
+  });
+  document.getElementById('manageBillList').innerHTML=html;
+}
+
+function ordSuffix(d){
+  if(d>=11&&d<=13)return'th';
+  switch(d%10){case 1:return'st';case 2:return'nd';case 3:return'rd';default:return'th';}
+}
+
+function editBill(id){
+  var b=bills.find(function(x){return x.id===id;});
+  if(!b)return;
+  document.getElementById('editId').value=id;
+  document.getElementById('fName').value=b.name;
+  document.getElementById('fDay').value=b.day;
+  document.getElementById('fAmount').value=b.amount!=null?b.amount:'';
+  document.getElementById('fApprox').value=b.amount==null?'null':b.approx?'true':'false';
+  document.getElementById('fOwed').value=b.owed!=null?b.owed:'';
+  document.getElementById('fNote').value=b.note||'';
+  document.getElementById('fUrl').value=b.url||'';
+  document.getElementById('fUsername').value=b.username||'';
+  document.getElementById('fPassword').value=b.password||'';
+  document.getElementById('tabAdd').textContent='Edit Bill';
+  switchTab('add');
+}
+
+async function deleteBill(id){
+  if(!confirm('Delete this bill?'))return;
+  bills=bills.filter(function(b){return b.id!==id;});
+  await saveBills();
+  renderManageList();
+  render();
+}
+
+async function saveBill(){
+  var name=document.getElementById('fName').value.trim();
+  var day=parseInt(document.getElementById('fDay').value);
+  var amtVal=document.getElementById('fAmount').value.trim();
+  var approxVal=document.getElementById('fApprox').value;
+  var owedVal=document.getElementById('fOwed').value.trim();
+  var note=document.getElementById('fNote').value.trim();
+
+  if(!name||!day||day<1||day>31){alert('Please enter a name and valid due day (1-31).');return;}
+
+  var amount=approxVal==='null'?null:(amtVal?parseFloat(amtVal):null);
+  var approx=approxVal==='true';
+  var owed=owedVal?parseFloat(owedVal):null;
+  var editId=document.getElementById('editId').value;
+
+  if(editId){
+    var idx=bills.findIndex(function(b){return b.id===editId;});
+    if(idx>-1){
+      bills[idx].name=name;
+      bills[idx].day=day;
+      bills[idx].amount=amount;
+      bills[idx].approx=approx;
+      bills[idx].owed=owed;
+      bills[idx].note=note;
+      bills[idx].url=document.getElementById('fUrl').value.trim()||null;
+      bills[idx].username=document.getElementById('fUsername').value.trim()||null;
+      bills[idx].password=document.getElementById('fPassword').value.trim()||null;
+      bills[idx].icon=pickIcon(name);
+    }
+  } else {
+    var newId='bill_'+Date.now();
+    bills.push({id:newId,day:day,name:name,icon:pickIcon(name),amount:amount,approx:approx,note:note,owed:owed,url:document.getElementById('fUrl').value.trim()||null,username:document.getElementById('fUsername').value.trim()||null,password:document.getElementById('fPassword').value.trim()||null});
+  }
+
+  await saveBills();
+  switchTab('list');
+  renderManageList();
+  render();
+}
+
+function render(){
+  document.getElementById('monthLabel').textContent=MONTHS[curMonth]+' '+curYear;
+
+  var totalDue=0,totalPaid=0,paidCount=0,loanTotal=0;
+  bills.forEach(function(b){
+    var a=getAmt(b);
+    if(a!=null)totalDue+=a;
+    if(paid[b.id]){if(a!=null)totalPaid+=a;paidCount++;}
+    if(b.owed!=null)loanTotal+=(owedAmt[b.id]!=null?owedAmt[b.id]:b.owed);
+  });
+
+  document.getElementById('sTotalDue').textContent=fmt(totalDue);
+  document.getElementById('sPaid').textContent=fmt(totalPaid);
+  document.getElementById('sLeft').textContent=fmt(totalDue-totalPaid);
+  document.getElementById('sOwed').textContent=fmt(loanTotal);
+
+  var pct=bills.length>0?Math.round(paidCount/bills.length*100):0;
+  document.getElementById('pFill').style.width=pct+'%';
+  document.getElementById('pText').textContent=paidCount+' of '+bills.length+' paid';
+  document.getElementById('pPct').textContent=pct+'%';
+
+  var overdueList=[],soonList=[];
+  bills.forEach(function(b){
+    if(paid[b.id])return;
+    var s=getStatus(b.day);
+    if(s==='overdue')overdueList.push(b);
+    if(s==='soon'||s==='today')soonList.push(b);
+  });
+
+  var alertArea=document.getElementById('alertArea');
+  alertArea.innerHTML='';
+  if(overdueList.length>0){
+    var d=document.createElement('div');
+    d.className='alert-overdue';
+    d.innerHTML='&#9888;&#65039; <strong>Past due — pay now!</strong>';
+    overdueList.forEach(function(b){
+      d.innerHTML+='<div class="alert-item">&#8226; '+b.name+(getAmt(b)!=null?' — '+fmt(getAmt(b)):'')+'</div>';
+    });
+    alertArea.appendChild(d);
+  }
+  if(soonList.length>0){
+    var d2=document.createElement('div');
+    d2.className='alert-soon';
+    d2.innerHTML='&#128277; <strong>Coming up soon</strong>';
+    soonList.forEach(function(b){
+      var s=getStatus(b.day);
+      var today=new Date().getDate();
+      var label=s==='today'?'due TODAY':'due in '+(b.day-today)+' day'+(b.day-today===1?'':'s');
+      d2.innerHTML+='<div class="alert-item">&#8226; '+b.name+' — '+label+(getAmt(b)!=null?' ('+fmt(getAmt(b))+')':'')+'</div>';
+    });
+    alertArea.appendChild(d2);
+  }
+
+  var grouped={};
+  bills.forEach(function(b){if(!grouped[b.day])grouped[b.day]=[];grouped[b.day].push(b);});
+  var list=document.getElementById('billList');
+  list.innerHTML='';
+
+  Object.keys(grouped).sort(function(a,b){return a-b;}).forEach(function(day){
+    var groupStatus='normal';
+    grouped[day].forEach(function(b){
+      if(!paid[b.id]){
+        var s=getStatus(b.day);
+        if(s==='overdue'||s==='today')groupStatus='overdue';
+        else if(s==='soon'&&groupStatus!=='overdue')groupStatus='soon';
+      }
+    });
+    var grp=document.createElement('div');
+    grp.className='day-group';
+    var dotClass='day-dot'+(groupStatus==='overdue'?' overdue':groupStatus==='soon'?' soon':'');
+    var d=parseInt(day);
+    grp.innerHTML='<div class="day-label"><span class="'+dotClass+'"></span>Due '+d+ordSuffix(d)+' of the month</div>';
+
+    grouped[day].forEach(function(b){
+      var isPaid=!!paid[b.id];
+      var status=isPaid?'paid':getStatus(b.day);
+      var amt=getAmt(b);
+      var owed=b.owed!=null?(owedAmt[b.id]!=null?owedAmt[b.id]:b.owed):null;
+
+      var statusTag='';
+      if(!isPaid){
+        if(status==='overdue')statusTag='<span class="status-tag tag-overdue">&#9888; Past due</span>';
+        else if(status==='today')statusTag='<span class="status-tag tag-today">&#128280; Due today</span>';
+        else if(status==='soon')statusTag='<span class="status-tag tag-soon">&#128994; Due soon</span>';
+      }
+
+      var payBtn=b.url?'<a href="'+b.url+'" target="_blank" style="display:inline-block;margin-top:4px;font-size:11px;font-weight:600;padding:3px 10px;background:#e8f4ff;color:#1a6bbf;border-radius:8px;text-decoration:none;">&#128279; Pay now</a>':'';
+      var amtHtml=amt!=null
+        ?'<div class="bill-amt'+(b.approx?' approx':'')+'">'+( b.approx?'~':'')+fmt(amt)+'</div>'
+        :'<button class="set-btn" onclick="setAmt(\''+b.id+'\')">Set amount</button>';
+      var owedHtml=owed!=null?'<div><span class="owed-tag">Balance: '+fmt(owed)+'</span></div>':'';
+      var noteHtml=b.note?'<div class="bill-sub">'+b.note+'</div>':'';
+
+      var rowClass='bill-row';
+      if(isPaid)rowClass+=' paid';
+      else if(status==='overdue')rowClass+=' overdue';
+      else if(status==='today')rowClass+=' today';
+      else if(status==='soon')rowClass+=' soon';
+
+      var row=document.createElement('div');
+      row.className=rowClass;
+      row.innerHTML=
+        '<button class="check '+(isPaid?'done':'')+'" onclick="togglePaid(\''+b.id+'\')" aria-label="'+(isPaid?'Mark unpaid':'Mark paid')+'">'+(isPaid?'&#10003;':'')+'</button>'+
+        '<div style="font-size:20px;flex-shrink:0">'+b.icon+'</div>'+
+        '<div class="bill-info"><div class="bill-name">'+b.name+'</div>'+noteHtml+statusTag+owedHtml+payBtn+'</div>'+
+        amtHtml;
+      grp.appendChild(row);
+    });
+    list.appendChild(grp);
+  });
+}
+
+initPin();
+loadState().then(function(){render();});
+setInterval(function(){initPin();
+loadState().then(function(){render();});},30000);
+</script>
+</body>
+</html>
